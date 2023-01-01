@@ -1,13 +1,11 @@
 package com.kport.CoulombForce;
 
-import org.lwjgl.glfw.GLFW;
+import com.kport.CoulombForce.gui.GUIElement;
 
 import java.io.IOException;
-import java.nio.DoubleBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,13 +20,25 @@ public class Renderer {
     private static int lineVertexArray;
     private static int lineShader;
 
-    private static List<StaticLineSegment> additionalLineSegments = new ArrayList<>();
-    private static double[] mouseVector = {0, 0};
+    private static int arrowShader;
+
+    private static List<LineSegment> additionalLineSegments = new ArrayList<>();
+    private static List<LineSegment> arrows = new ArrayList<>();
+
+
+    //private static NkContext nkContext;
+
+    public static List<GUIElement> guiElements = new ArrayList<>();
 
     private static GLFWWindowManager windowManager;
 
     public static void init(GLFWWindowManager windowManager_){
         windowManager = windowManager_;
+
+        glEnable(GL_PROGRAM_POINT_SIZE);
+        glEnable(GL_POINT_SPRITE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
 
         particleVertexArray = glGenVertexArrays();
         glBindVertexArray(particleVertexArray);
@@ -43,11 +53,6 @@ public class Renderer {
         //Charge
         glVertexAttribPointer(2, 1, GL_FLOAT, false, 5 * 4, 4 * 4);
         glEnableVertexAttribArray(2);
-
-        glEnable(GL_PROGRAM_POINT_SIZE);
-        glEnable(GL_POINT_SPRITE);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_BLEND);
 
         int particleFSH = glCreateShader(GL_FRAGMENT_SHADER);
         int particleVSH = glCreateShader(GL_VERTEX_SHADER);
@@ -116,11 +121,64 @@ public class Renderer {
         glAttachShader(lineShader, lineVSH);
         glLinkProgram(lineShader);
         glDeleteShader(lineFSH);
-        glDeleteShader(lineVSH);
+        //glDeleteShader(lineVSH);
         glGetProgramiv(lineShader, GL_LINK_STATUS, status);
         if(status[0] == 0){
             throw new Error(glGetProgramInfoLog(lineShader));
         }
+
+        int arrowFSH = glCreateShader(GL_FRAGMENT_SHADER);
+        try {
+            glShaderSource(arrowFSH, Files.readString(Path.of("./shaders/arrowFSH.glsl")));
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        glCompileShader(arrowFSH);
+        glGetShaderiv(arrowFSH, GL_COMPILE_STATUS, status);
+        if(status[0] == 0)
+            throw new Error(glGetShaderInfoLog(arrowFSH));
+
+        arrowShader = glCreateProgram();
+        glAttachShader(arrowShader, arrowFSH);
+        glAttachShader(arrowShader, lineVSH);
+        glLinkProgram(arrowShader);
+        glDeleteShader(arrowFSH);
+        glDeleteShader(lineVSH);
+        glGetProgramiv(arrowShader, GL_LINK_STATUS, status);
+        if(status[0] == 0){
+            throw new Error(glGetProgramInfoLog(arrowShader));
+        }
+
+
+        /*nkContext = NkContext.create();
+        Nuklear.nk_init(nkContext,
+                NkAllocator.create().alloc((handle, old, size) -> MemoryUtil.nmemAllocChecked(size))
+                        .mfree((handle, ptr) -> MemoryUtil.nmemFree(ptr)),
+                null);*/
+
+        windowManager.addMouseCallback((window, button, action, i) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleMouseButtonEvent(window, button, action, i);
+            }
+        });
+
+        windowManager.addKeyCallback((window, key, scancode, action, mods) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleKeyEvent(window, key, scancode, action, mods);
+            }
+        });
+
+        windowManager.addCursorPosCallback((window, x, y) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleCursorPosEvent(window, x, y);
+            }
+        });
+
+        windowManager.addScrollCallback((window, d, dir) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleScrollEvent(window, d, dir);
+            }
+        });
     }
 
     public static void renderObjects(){
@@ -143,10 +201,8 @@ public class Renderer {
         glDrawArrays(GL_POINTS, 0, particles.size());
 
 
-        List<StaticLineSegment> lineSegments = objects.stream().filter(o -> o instanceof StaticLineSegment).map(o -> (StaticLineSegment)o).collect(Collectors.toList());
+        List<LineSegment> lineSegments = objects.stream().filter(o -> o instanceof LineSegment).map(o -> (LineSegment)o).collect(Collectors.toList());
         lineSegments.addAll(additionalLineSegments);
-        if(Util.len(mouseVector) > Double.MIN_VALUE * 128)
-        lineSegments.add(new StaticLineSegment(windowManager.getNormalizedCursorPos(), Util.add(windowManager.getNormalizedCursorPos(), mouseVector), 0.005));
         float[] lineSegmentVertexData = new float[lineSegments.size() * 5];
         for (int i = 0; i < lineSegments.size(); i++) {
             lineSegmentVertexData[i * 5] = (float)lineSegments.get(i).getP1()[0];
@@ -163,17 +219,53 @@ public class Renderer {
         glBufferData(GL_ARRAY_BUFFER, lineSegmentVertexData, GL_DYNAMIC_DRAW);
         glUseProgram(lineShader);
         glDrawArrays(GL_POINTS, 0, lineSegments.size());
+
+
+        float[] arrowVertexData = new float[arrows.size() * 5];
+        for (int i = 0; i < arrows.size(); i++) {
+            arrowVertexData[i * 5] = (float)arrows.get(i).getP1()[0];
+            arrowVertexData[i * 5 + 1] = (float)arrows.get(i).getP1()[1];
+
+            arrowVertexData[i * 5 + 2] = (float)arrows.get(i).getP2()[0];
+            arrowVertexData[i * 5 + 3] = (float)arrows.get(i).getP2()[1];
+
+            arrowVertexData[i * 5 + 4] = (float)arrows.get(i).getRadius();
+        }
+
+        glBindVertexArray(lineVertexArray);
+        glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, arrowVertexData, GL_DYNAMIC_DRAW);
+        glUseProgram(arrowShader);
+        glDrawArrays(GL_POINTS, 0, arrows.size());
+
+
+        for (GUIElement guiElement : guiElements) {
+            guiElement.render();
+        }
     }
 
-    public static void addLineSegment(StaticLineSegment lineSegment){
+    public static void addLineSegment(LineSegment lineSegment){
         additionalLineSegments.add(lineSegment);
     }
 
-    public static void removeLineSegment(StaticLineSegment lineSegment){
+    public static void removeLineSegment(LineSegment lineSegment){
         additionalLineSegments.remove(lineSegment);
     }
 
-    public static void setMouseVector(double[] vec){
-        mouseVector = vec;
+    public static void addArrow(LineSegment lineSegment){
+        arrows.add(lineSegment);
+    }
+
+    public static void removeArrow(LineSegment lineSegment){
+        arrows.remove(lineSegment);
+    }
+
+    public static void addGUIElement(GUIElement element){
+        guiElements.add(element);
+        element.init(windowManager);
+    }
+
+    public static void removeGUIElement(GUIElement element){
+        guiElements.remove(element);
     }
 }

@@ -5,6 +5,7 @@ out vec4 fragColor;
 flat in vec2 pos1;
 flat in vec2 pos2;
 flat in float radius;
+flat in float value;
 
 void main() {
     vec2 coord = (gl_FragCoord.xy / 400) - vec2(1, 1);
@@ -12,6 +13,7 @@ void main() {
     h = clamp(h, 0, 1);
     float dist = length(coord - (pos1 + h * (pos2 - pos1)));
     dist -= radius;
+    dist = min(dist, length(coord - mix(pos1, pos2, value)) - radius * 2);
 
     float alpha = 1 - smoothstep(-0.005, 0, dist);
     fragColor = vec4(1, 1, 1, alpha);

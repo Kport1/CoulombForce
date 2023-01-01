@@ -1,15 +1,20 @@
 package com.kport.CoulombForce;
 
+import com.kport.CoulombForce.gui.GUIElement;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL41;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class GLFWWindowManager implements Closeable {
+
+    private static Map<Long, GLFWWindowManager> windowManagerMap = new HashMap<>();
 
     private final Consumer<Long> loop;
     private final Consumer<Long> start;
@@ -17,7 +22,13 @@ public class GLFWWindowManager implements Closeable {
     private final List<GLFWMouseButtonCallbackI> mouseButtonCallbacks = new ArrayList<>();
     private final List<GLFWCursorPosCallbackI> cursorPosCallbacks = new ArrayList<>();
     private final List<GLFWScrollCallbackI> scrollCallbacks = new ArrayList<>();
+
     private final long window;
+
+    public static GLFWWindowManager of(long window){
+        return windowManagerMap.get(window);
+    }
+
     public GLFWWindowManager(int w, int h, String title, Consumer<Long> start_, Consumer<Long> loop_){
         GLFWErrorCallback.createPrint(System.err).set();
         if(!GLFW.glfwInit()) throw new IllegalStateException("Couldn't initialize GLFW");
@@ -28,7 +39,13 @@ public class GLFWWindowManager implements Closeable {
         window = GLFW.glfwCreateWindow(w, h, title, 0, 0);
         if(window == 0) throw new IllegalStateException("Couldn't create window");
 
+        windowManagerMap.put(window, this);
+
         GLFW.glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
+            for (GUIElement element : Renderer.guiElements) {
+                if(element.handleKeyEvent(window, key, scancode, action, mods)) return;
+            }
+
             if(key == GLFW.GLFW_KEY_ESCAPE){
                 GLFW.glfwSetWindowShouldClose(window, true);
             }
@@ -38,19 +55,31 @@ public class GLFWWindowManager implements Closeable {
         });
 
         GLFW.glfwSetMouseButtonCallback(window, (window, button, action, i) -> {
+            for (GUIElement element : Renderer.guiElements) {
+                if(element.handleMouseButtonEvent(window, button, action, i)) return;
+            }
+
             for (GLFWMouseButtonCallbackI mouseButtonCallback : mouseButtonCallbacks) {
                 mouseButtonCallback.invoke(window, button, action, i);
             }
         });
 
         GLFW.glfwSetCursorPosCallback(window, (window, x, y) -> {
+            double[] coords = normalizeCoords(x, y);
+            for (GUIElement element : Renderer.guiElements) {
+                if(element.handleCursorPosEvent(window, coords[0], coords[1])) return;
+            }
+
             for (GLFWCursorPosCallbackI cursorPosCallback : cursorPosCallbacks) {
-                double[] coords = normalizeCoords(x, y);
                 cursorPosCallback.invoke(window, coords[0], coords[1]);
             }
         });
 
         GLFW.glfwSetScrollCallback(window, (window, d, dir) -> {
+            for (GUIElement element : Renderer.guiElements) {
+                if(element.handleScrollEvent(window, d, dir)) return;
+            }
+
             for (GLFWScrollCallbackI scrollCallback : scrollCallbacks) {
                 scrollCallback.invoke(window, d, dir);
             }

@@ -8,20 +8,24 @@ import java.util.Random;
 public class Physics {
 
     public static final List<PhysicsObject> objects = new ArrayList<>();
-    public static int subSteps = 32;
+    public static int subSteps = 128;
     public static final double COULOMB_STRENGTH = 5;
-    public static final double DRAG_STRENGTH = 5;
-    public static double temperature = 0;
+    public static double dragStrength = 0;
+    private static double temperature = 0;
+    private static double restitution = 0.7;
 
     public static void update(double dt){
         double subDt = dt / subSteps;
         for (int i = 0; i < subSteps; i++) {
             applyCoulombForce();
             applyRandomForce();
-            //applyDragForce(subDt);
-            circleCollisionImpulse();
+            applyDragForce(subDt);
+
+            circleCollisionElastic();
             //circleCollision();
+
             circleStaticLineSegmentCollision();
+            circleDynamicLineSegmentCollision();
             updateObjects(subDt);
         }
     }
@@ -60,7 +64,7 @@ public class Physics {
         for(PhysicsObject object1 : objects){
             if(object1 instanceof Particle particle){
                 double drag = Util.len(particle.getVel()) / dt;
-                drag *= drag * -DRAG_STRENGTH;
+                drag *= drag * -dragStrength;
                 if(drag == 0) continue;
                 double[] force = Util.mul(Util.norm(particle.getVel()), drag);
                 particle.applyForce(force);
@@ -89,7 +93,7 @@ public class Physics {
         }
     }
 
-    private static void circleCollisionImpulse(){
+    private static void circleCollisionElastic(){
         for (PhysicsObject object1 : objects) {
             if(object1 instanceof Particle particle)
             for (PhysicsObject object2 : objects) {
@@ -106,7 +110,7 @@ public class Physics {
                         double velAlongNormal = Util.dot(rv, normal);
                         if(velAlongNormal > 0) continue;
 
-                        double impulseS = (-(1 + 0.7) * velAlongNormal) / (1 / particle.getMass() + 1 / other.getMass());
+                        double impulseS = (-(1 + restitution) * velAlongNormal) / (1 / particle.getMass() + 1 / other.getMass());
                         double[] impulse = Util.mul(normal, impulseS);
                         particle.addImpulse(impulse);
                         other.addImpulse(Util.mul(impulse, -1));
@@ -128,10 +132,26 @@ public class Physics {
                     double[] normal = ls.getNormal(p.getPos());
                     double dist = Util.len(normal) - p.getRadius() - ls.getRadius();
                     if(dist < 0){
-                        p.addPos(Util.mul(Util.norm(normal), dist * -1.5));
+                        p.addPos(Util.mul(Util.norm(normal), dist * -(1 + restitution)));
                     }
                 }
             }
+        }
+    }
+
+    private static void circleDynamicLineSegmentCollision(){
+        for (PhysicsObject object1 : objects) {
+            if(object1 instanceof Particle p)
+                for(PhysicsObject object2 : objects){
+                    if(object2 instanceof DynamicLineSegment ls){
+                        double[] normal = ls.getNormal(p.getPos());
+                        double dist = Util.len(normal) - p.getRadius() - ls.getRadius();
+                        if(dist < 0){
+                            p.addPos(Util.mul(Util.norm(normal), dist * -0.5));
+                            ls.addPos(Util.mul(Util.norm(normal), dist * 0.5), p.getPos());
+                        }
+                    }
+                }
         }
     }
 
@@ -159,10 +179,17 @@ public class Physics {
 
                 double mag = p.getCharge() / (r * r) * COULOMB_STRENGTH;
                 double[] force = Util.mul(Util.norm(dp), mag);
-                field = Util.add(field, force);
+                field = Util.sub(field, force);
             }
         }
         return field;
     }
 
+    public static void setTemperature(double temperature) {
+        Physics.temperature = temperature;
+    }
+
+    public static void setDragStrength(double dragStrength){
+        Physics.dragStrength = dragStrength;
+    }
 }
