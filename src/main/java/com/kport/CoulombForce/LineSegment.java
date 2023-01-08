@@ -15,6 +15,10 @@ public interface LineSegment {
 
     void setP2(double[] p);
 
+    public void addP1(double[] p);
+
+    public void addP2(double[] p);
+
     void setR(double r_);
 
     double[] getNormal(double[] p);

@@ -10,6 +10,10 @@ public class Util {
         return a[0] * b[0] + a[1] * b[1];
     }
 
+    public static double cross(double[] a, double[] b){
+        return a[0] * b[1] - b[0] * a[1];
+    }
+
     public static double[] add(double[] a, double[] b){
         return new double[]{a[0] + b[0], a[1] + b[1]};
     }

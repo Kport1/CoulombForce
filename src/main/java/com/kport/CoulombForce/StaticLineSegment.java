@@ -66,6 +66,18 @@ public class StaticLineSegment implements PhysicsObject, LineSegment{
     }
 
     @Override
+    public void addP1(double[] p){
+        p1[0] += p[0];
+        p1[1] += p[1];
+    }
+
+    @Override
+    public void addP2(double[] p){
+        p2[0] += p[0];
+        p2[1] += p[1];
+    }
+
+    @Override
     public void setR(double r_){
         r = r_;
     }

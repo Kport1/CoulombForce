@@ -20,12 +20,16 @@ public class Physics {
             applyCoulombForce();
             applyRandomForce();
             applyDragForce(subDt);
+            //applyGravity();
 
             circleCollisionElastic();
             //circleCollision();
 
             circleStaticLineSegmentCollision();
             circleDynamicLineSegmentCollision();
+
+            dynamicStaticLineSegmentCollision();
+
             updateObjects(subDt);
         }
     }
@@ -61,13 +65,38 @@ public class Physics {
     }
 
     private static void applyDragForce(double dt){
-        for(PhysicsObject object1 : objects){
-            if(object1 instanceof Particle particle){
+        for(PhysicsObject object : objects){
+            if(object instanceof Particle particle){
                 double drag = Util.len(particle.getVel()) / dt;
                 drag *= drag * -dragStrength;
                 if(drag == 0) continue;
                 double[] force = Util.mul(Util.norm(particle.getVel()), drag);
                 particle.applyForce(force);
+            }
+            if(object instanceof DynamicLineSegment ls){
+                double[] p1Vel = ls.getP1Vel();
+                double p1Drag = Util.len(p1Vel) / dt;
+                if(p1Drag != 0) {
+                    p1Drag *= p1Drag * -dragStrength;
+                    double[] p1Force = Util.mul(Util.norm(p1Vel), p1Drag);
+                    ls.applyForce(p1Force, ls.getP1());
+                }
+
+                double[] p2Vel = ls.getP2Vel();
+                double p2Drag = Util.len(p2Vel) / dt;
+                if(p2Drag != 0) {
+                    p2Drag *= p2Drag * -dragStrength;
+                    double[] p2Force = Util.mul(Util.norm(p2Vel), p2Drag);
+                    ls.applyForce(p2Force, ls.getP2());
+                }
+            }
+        }
+    }
+
+    private static void applyGravity(){
+        for (PhysicsObject object : objects) {
+            if(object instanceof Particle p){
+                p.applyForce(new double[]{0, 0});
             }
         }
     }
@@ -115,9 +144,9 @@ public class Physics {
                         particle.addImpulse(impulse);
                         other.addImpulse(Util.mul(impulse, -1));
 
-                        double[] correction = Util.mul(normal, penDepth / (1 / particle.getMass() + 1 / other.getMass()) * 0.2);
+                        /*double[] correction = Util.mul(normal, penDepth / (1 / particle.getMass() + 1 / other.getMass()) * 0.2);
                         particle.addPos(Util.div(correction, particle.getMass()));
-                        other.addPos(Util.div(Util.mul(correction, -1), other.getMass()));
+                        other.addPos(Util.div(Util.mul(correction, -1), other.getMass()));*/
                     }
                 }
             }
@@ -149,6 +178,37 @@ public class Physics {
                         if(dist < 0){
                             p.addPos(Util.mul(Util.norm(normal), dist * -0.5));
                             ls.addPos(Util.mul(Util.norm(normal), dist * 0.5), p.getPos());
+                        }
+                    }
+                }
+        }
+    }
+
+    private static void dynamicStaticLineSegmentCollision(){
+        for (PhysicsObject object1 : objects) {
+            if(object1 instanceof StaticLineSegment sls)
+                for(PhysicsObject object2 : objects){
+                    if(object2 instanceof DynamicLineSegment dls){
+                        double[] normal1 = sls.getNormal(dls.getP1());
+                        double dist1 = Util.len(normal1) - dls.getRadius() - sls.getRadius();
+                        if(dist1 < 0){
+                            dls.addP1(Util.mul(Util.norm(normal1), dist1 * -(1 + restitution)));
+                        }
+                        double[] normal2 = sls.getNormal(dls.getP2());
+                        double dist2 = Util.len(normal2) - dls.getRadius() - sls.getRadius();
+                        if(dist2 < 0){
+                            dls.addP2(Util.mul(Util.norm(normal2), dist2 * -(1 + restitution)));
+                        }
+
+                        double[] normal3 = dls.getNormal(sls.getP1());
+                        double dist3 = Util.len(normal3) - dls.getRadius() - sls.getRadius();
+                        if(dist3 < 0){
+                            dls.addP1(Util.mul(Util.norm(normal3), dist3 * (1 + restitution)));
+                        }
+                        double[] normal4 = dls.getNormal(sls.getP2());
+                        double dist4 = Util.len(normal4) - dls.getRadius() - sls.getRadius();
+                        if(dist4 < 0){
+                            dls.addP2(Util.mul(Util.norm(normal4), dist4 * (1 + restitution)));
                         }
                     }
                 }

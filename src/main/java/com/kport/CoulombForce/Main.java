@@ -40,9 +40,6 @@ public class Main {
                 Renderer.addGUIElement(simSpeedSlider);
                 Renderer.addGUIElement(dragStrengthSlider);
 
-                DynamicLineSegment ls = new DynamicLineSegment(new double[]{-0.95, -0.95}, new double[]{1, 1}, 0.01, 1);
-                Physics.addPhysicsObject(ls);
-                //ls.applyForce(new double[]{0, -1}, new double[]{-0.1, 0});
             },
 
 
@@ -104,6 +101,10 @@ public class Main {
                 frame.getAndIncrement();
             });
 
+        final double[][] coordPress = {new double[2]};
+        final double[] lineThickness = {0.02};
+        final LineSegment[] ls = new LineSegment[1];
+
         windowManager.addKeyCallback((window, key, scancode, action, mods) -> {
             if(action != GLFW.GLFW_PRESS) return;
             double[] coords = windowManager.getNormalizedCursorPos();
@@ -159,12 +160,42 @@ public class Main {
                         }
                     }
                 }
+
+                case GLFW.GLFW_KEY_L -> {
+                    if(!(ls[0] instanceof DynamicLineSegment dls)) return;
+
+                    coordPress[0] = windowManager.getNormalizedCursorPos();
+
+                    for (PhysicsObject object : Physics.objects) {
+                        if(object instanceof DynamicLineSegment dls2){
+                            if(Util.len(Util.sub(dls2.getP1(), coordPress[0])) < dls2.getRadius() && dls2.getP1Link() == null){
+                                dls2.setP1Link(dls);
+                            }
+                        }
+                    }
+
+                    dls.setP1Vel(new double[]{0, 0});
+                    dls.setP2Vel(new double[]{0, 0});
+                    Physics.addPhysicsObject(dls);
+                    Renderer.removeLineSegment(dls);
+                    //lineThickness[0] = 0.02;
+                    ls[0] = new DynamicLineSegment(coordPress[0], coordPress[0].clone(), lineThickness[0], 1);
+                    Renderer.addLineSegment(ls[0]);
+                    dls.setP2Link((DynamicLineSegment) ls[0]);
+                }
+
+                case GLFW.GLFW_KEY_F -> {
+                    if(!(ls[0] instanceof DynamicLineSegment dls)) return;
+                    dls.setP1Fixed(true);
+                }
+
+                case GLFW.GLFW_KEY_G -> {
+                    if(!(ls[0] instanceof DynamicLineSegment dls)) return;
+                    dls.setP2Fixed(true);
+                }
             }
         });
 
-        final double[][] coordPress = {new double[2]};
-        final double[] lineThickness = {0.02};
-        final LineSegment[] ls = new LineSegment[1];
         windowManager.addMouseCallback((window, button, action, i) -> {
             if(button == GLFW.GLFW_MOUSE_BUTTON_LEFT){
                 if(action == GLFW.GLFW_PRESS) {

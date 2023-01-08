@@ -18,8 +18,14 @@ public class DynamicLineSegment implements PhysicsObject, LineSegment{
     private final double m;
 
     private boolean p1Fixed = false;
+    private boolean p2Fixed = false;
+    //Center point if p1 and p2 fixed
+    private double[] fixedCenter = {0, 0};
 
     private double dist;
+
+    private DynamicLineSegment p1Link = null;
+    private DynamicLineSegment p2Link = null;
 
     public DynamicLineSegment(double[] p1_, double[] p2_, double r_, double m_) {
         p1 = p1_;
@@ -36,7 +42,7 @@ public class DynamicLineSegment implements PhysicsObject, LineSegment{
 
     @Override
     public void update(double dt) {
-        if(!p1Fixed) {
+        if(!p1Fixed || p2Fixed) {
             double p1vx = p1[0] - prevP1[0];
             double p1vy = p1[1] - prevP1[1];
 
@@ -50,31 +56,56 @@ public class DynamicLineSegment implements PhysicsObject, LineSegment{
             p1Acc[1] = 0;
         }
 
-        double p2vx = p2[0] - prevP2[0];
-        double p2vy = p2[1] - prevP2[1];
+        if(!p2Fixed || p1Fixed) {
+            double p2vx = p2[0] - prevP2[0];
+            double p2vy = p2[1] - prevP2[1];
 
-        prevP2[0] = p2[0];
-        prevP2[1] = p2[1];
+            prevP2[0] = p2[0];
+            prevP2[1] = p2[1];
 
-        p2[0] += p2vx + p2Acc[0] * dt * dt;
-        p2[1] += p2vy + p2Acc[1] * dt * dt;
+            p2[0] += p2vx + p2Acc[0] * dt * dt;
+            p2[1] += p2vy + p2Acc[1] * dt * dt;
 
-        p2Acc[0] = 0;
-        p2Acc[1] = 0;
+            p2Acc[0] = 0;
+            p2Acc[1] = 0;
+        }
+
+        //Inverse kinematics
+        if(p1Link != null){
+            double[] d = Util.sub(p1Link.getP2(), p1);
+            addP1(Util.mul(d, 0.5));
+            p1Link.addP2(Util.mul(d, -0.5));
+        }
+        if(p2Link != null){
+            double[] d = Util.sub(p2Link.getP1(), p2);
+            addP2(Util.mul(d, 0.5));
+            p2Link.addP1(Util.mul(d, -0.5));
+        }
+
 
         double distDiff = Util.len(Util.sub(p2, p1)) - dist;
         double[] norm = Util.norm(Util.sub(p2, p1));
         if(Double.isNaN(norm[0]) || Double.isNaN(norm[1])) norm = new double[]{0, 0};
-        if(p1Fixed){
-            p2[0] += norm[0] * distDiff * -1;
-            p2[1] += norm[1] * distDiff * -1;
+
+        if(p1Fixed && p2Fixed){
+            double[] newCenter = Util.mul(Util.add(p1, p2), 0.5);
+            double[] centerDiff = Util.sub(fixedCenter, newCenter);
+            addP1(centerDiff);
+            addP2(centerDiff);
+            addP1(Util.mul(norm, distDiff * 0.5));
+            addP2(Util.mul(norm, distDiff * -0.5));
         }
-        else {
-            p1[0] += norm[0] * distDiff * 0.5;
-            p1[1] += norm[1] * distDiff * 0.5;
-            p2[0] += norm[0] * distDiff * -0.5;
-            p2[1] += norm[1] * distDiff * -0.5;
+        else if(p1Fixed){
+            addP2(Util.mul(norm, -distDiff));
         }
+        else if(p2Fixed){
+            addP1(Util.mul(norm, distDiff));
+        }
+        else{
+            addP1(Util.mul(norm, distDiff * 0.5));
+            addP2(Util.mul(norm, distDiff * -0.5));
+        }
+
 
         p1[0] = Util.clamp(p1[0], -1, 1);
         p1[1] = Util.clamp(p1[1], -1, 1);
@@ -96,14 +127,43 @@ public class DynamicLineSegment implements PhysicsObject, LineSegment{
         double h = Util.dot(Util.sub(pos, p1), Util.norm(Util.sub(p2, p1))) / Util.len(Util.sub(p2, p1));
         if(Double.isNaN(h)) h = 0;
         h = Util.clamp(h, 0, 1);
-        p1[0] += p[0] * (1 - h);
-        p1[1] += p[1] * (1 - h);
-        p2[0] += p[0] * h;
-        p2[1] += p[1] * h;
+
+        if(!p1Fixed || p2Fixed)
+        addP1(Util.mul(p, 1 - h));
+        if(!p2Fixed || p1Fixed)
+        addP2(Util.mul(p, h));
     }
 
     public void setP1Fixed(boolean fixed){
         p1Fixed = fixed;
+        if(p1Fixed && p2Fixed){
+            fixedCenter = Util.mul(Util.add(p1, p2), 0.5);
+        }
+    }
+
+    public void setP2Fixed(boolean fixed){
+        p2Fixed = fixed;
+        if(p1Fixed && p2Fixed){
+            fixedCenter = Util.mul(Util.add(p1, p2), 0.5);
+        }
+    }
+
+    public void setP1Link(DynamicLineSegment ls){
+        p1Link = ls;
+        ls.p2Link = this;
+    }
+
+    public void setP2Link(DynamicLineSegment ls){
+        p2Link = ls;
+        ls.p1Link = this;
+    }
+
+    public DynamicLineSegment getP1Link(){
+        return p1Link;
+    }
+
+    public DynamicLineSegment getP2Link(){
+        return p2Link;
     }
 
     @Override
@@ -179,6 +239,18 @@ public class DynamicLineSegment implements PhysicsObject, LineSegment{
         p2[0] = p[0];
         p2[1] = p[1];
         dist = Util.len(Util.sub(p2, p1));
+    }
+
+    @Override
+    public void addP1(double[] p){
+        p1[0] += p[0];
+        p1[1] += p[1];
+    }
+
+    @Override
+    public void addP2(double[] p){
+        p2[0] += p[0];
+        p2[1] += p[1];
     }
 
     @Override
