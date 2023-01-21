@@ -8,7 +8,7 @@ import java.util.Random;
 public class Physics {
 
     public static final List<PhysicsObject> objects = new ArrayList<>();
-    public static int subSteps = 128;
+    public static int subSteps = 32;
     public static final double COULOMB_STRENGTH = 5;
     public static double dragStrength = 0;
     private static double temperature = 0;
@@ -144,9 +144,9 @@ public class Physics {
                         particle.addImpulse(impulse);
                         other.addImpulse(Util.mul(impulse, -1));
 
-                        /*double[] correction = Util.mul(normal, penDepth / (1 / particle.getMass() + 1 / other.getMass()) * 0.2);
+                        double[] correction = Util.mul(normal, penDepth / (1 / particle.getMass() + 1 / other.getMass()) * 0.2);
                         particle.addPos(Util.div(correction, particle.getMass()));
-                        other.addPos(Util.div(Util.mul(correction, -1), other.getMass()));*/
+                        other.addPos(Util.div(Util.mul(correction, -1), other.getMass()));
                     }
                 }
             }
@@ -203,12 +203,12 @@ public class Physics {
                         double[] normal3 = dls.getNormal(sls.getP1());
                         double dist3 = Util.len(normal3) - dls.getRadius() - sls.getRadius();
                         if(dist3 < 0){
-                            dls.addP1(Util.mul(Util.norm(normal3), dist3 * (1 + restitution)));
+                            dls.addPos(Util.mul(Util.norm(normal3), dist3 * (1 + restitution)), sls.getP1());
                         }
                         double[] normal4 = dls.getNormal(sls.getP2());
                         double dist4 = Util.len(normal4) - dls.getRadius() - sls.getRadius();
                         if(dist4 < 0){
-                            dls.addP2(Util.mul(Util.norm(normal4), dist4 * (1 + restitution)));
+                            dls.addPos(Util.mul(Util.norm(normal4), dist4 * (1 + restitution)), sls.getP2());
                         }
                     }
                 }

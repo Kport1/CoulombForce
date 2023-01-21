@@ -54,6 +54,7 @@ public class Renderer {
         glVertexAttribPointer(2, 1, GL_FLOAT, false, 5 * 4, 4 * 4);
         glEnableVertexAttribArray(2);
 
+        //System.out.println(Path.of("./shaders/particleFSH.glsl").toAbsolutePath());
         int particleFSH = glCreateShader(GL_FRAGMENT_SHADER);
         int particleVSH = glCreateShader(GL_VERTEX_SHADER);
         try {
