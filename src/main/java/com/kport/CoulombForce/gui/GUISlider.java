@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
-import static org.lwjgl.opengl.GL41.*;
+import static org.lwjgl.opengl.GL41C.*;
 
 public class GUISlider implements GUIElement{
     private static int shader;
@@ -25,6 +25,8 @@ public class GUISlider implements GUIElement{
     private int vao;
     private int vbo;
 
+    private GLFWWindowManager windowManager;
+
     public GUISlider(double[] pos1_, double[] pos2_, float radius_, double value_){
         pos1 = pos1_;
         pos2 = pos2_;
@@ -35,6 +37,8 @@ public class GUISlider implements GUIElement{
 
     @Override
     public void init(GLFWWindowManager windowManager) {
+        this.windowManager = windowManager;
+
         vao = glGenVertexArrays();
         glBindVertexArray(vao);
         vbo = glGenBuffers();
@@ -92,6 +96,8 @@ public class GUISlider implements GUIElement{
         float[] data = {(float)pos1[0], (float)pos1[1], (float)pos2[0], (float)pos2[1], radius, (float)value};
         glBufferData(GL_ARRAY_BUFFER, data, GL_DYNAMIC_DRAW);
         glUseProgram(shader);
+        int windowSizeLocation = glGetUniformLocation(shader, "windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
         glDrawArrays(GL_POINTS, 0, 1);
     }
 

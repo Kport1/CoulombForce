@@ -6,10 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.lwjgl.opengl.GL41.*;
+import static org.lwjgl.opengl.GL41C.*;
 
 public class Renderer {
     private static int particleVertexBuffer;
@@ -25,9 +26,6 @@ public class Renderer {
     private static List<LineSegment> additionalLineSegments = new ArrayList<>();
     private static List<LineSegment> arrows = new ArrayList<>();
 
-
-    //private static NkContext nkContext;
-
     public static List<GUIElement> guiElements = new ArrayList<>();
 
     private static GLFWWindowManager windowManager;
@@ -36,7 +34,6 @@ public class Renderer {
         windowManager = windowManager_;
 
         glEnable(GL_PROGRAM_POINT_SIZE);
-        glEnable(GL_POINT_SPRITE);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
 
@@ -199,6 +196,8 @@ public class Renderer {
         glBindBuffer(GL_ARRAY_BUFFER, particleVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, particleVertexData, GL_DYNAMIC_DRAW);
         glUseProgram(particleShader);
+        int windowSizeLocation = glGetUniformLocation(particleShader, "windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
         glDrawArrays(GL_POINTS, 0, particles.size());
 
 
@@ -219,6 +218,8 @@ public class Renderer {
         glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, lineSegmentVertexData, GL_DYNAMIC_DRAW);
         glUseProgram(lineShader);
+        windowSizeLocation = glGetUniformLocation(lineShader, "windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
         glDrawArrays(GL_POINTS, 0, lineSegments.size());
 
 
@@ -237,6 +238,8 @@ public class Renderer {
         glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, arrowVertexData, GL_DYNAMIC_DRAW);
         glUseProgram(arrowShader);
+        windowSizeLocation = glGetUniformLocation(arrowShader, "windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
         glDrawArrays(GL_POINTS, 0, arrows.size());
 
 

@@ -3,7 +3,7 @@ package com.kport.CoulombForce;
 import com.kport.CoulombForce.gui.GUIElement;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GL41;
+import org.lwjgl.opengl.GL41C;
 
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -86,7 +86,7 @@ public class GLFWWindowManager implements Closeable {
         });
 
         GLFW.glfwSetWindowSizeCallback(window, (window, width, height) -> {
-            GL41.glViewport(0, 0, width, height);
+            GL41C.glViewport(0, 0, width, height);
         });
 
         GLFW.glfwMakeContextCurrent(window);

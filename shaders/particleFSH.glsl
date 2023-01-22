@@ -1,11 +1,16 @@
-#version 410
+#version 410 core
 
 flat in float charge;
+flat in vec2 pos;
+flat in float radius;
 
 out vec4 fragCol;
 
+uniform ivec2 windowSize;
+
 void main() {
-    vec2 pointCoord = gl_PointCoord.st * 2 - 1;
+    vec2 pointCoord = (gl_FragCoord.xy / windowSize * 2 - 1) - pos;
+    pointCoord /= radius;
     float alpha = mix(8, 0, dot(pointCoord, pointCoord));
 
     if(charge > 0)
