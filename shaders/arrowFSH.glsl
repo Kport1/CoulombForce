@@ -2,9 +2,9 @@
 
 out vec4 fragColor;
 
-flat in vec2 pos1;
-flat in vec2 pos2;
-flat in float radius;
+uniform vec2 pos1;
+uniform vec2 pos2;
+uniform float radius;
 
 uniform ivec2 windowSize;
 

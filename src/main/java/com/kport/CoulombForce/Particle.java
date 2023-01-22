@@ -4,6 +4,7 @@ public class Particle implements PhysicsObject{
     private final double[] pos;
     private final double[] prevPos;
     private final double[] acc = {0, 0};
+    private final double invmass;
     private final double mass;
 
     private final double charge;
@@ -13,6 +14,7 @@ public class Particle implements PhysicsObject{
         pos = pos_;
         prevPos = pos_.clone();
         mass = mass_;
+        invmass = 1 / mass_;
         charge = charge_;
         radius = radius_;
     }
@@ -36,8 +38,8 @@ public class Particle implements PhysicsObject{
     }
 
     public void applyForce(double[] force){
-        acc[0] += force[0] / mass;
-        acc[1] += force[1] / mass;
+        acc[0] += force[0] * invmass;
+        acc[1] += force[1] * invmass;
     }
 
     public double[] getPos(){
@@ -84,10 +86,10 @@ public class Particle implements PhysicsObject{
     }
 
     public void setImpulse(double[] impulse){
-        setVel(new double[]{impulse[0] / mass, impulse[1] / mass});
+        setVel(new double[]{impulse[0] * invmass, impulse[1] * invmass});
     }
 
     public void addImpulse(double[] impulse){
-        addVel(new double[]{impulse[0] / mass, impulse[1] / mass});
+        addVel(new double[]{impulse[0] * invmass, impulse[1] * invmass});
     }
 }

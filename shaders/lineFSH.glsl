@@ -2,11 +2,11 @@
 
 out vec4 fragColor;
 
-flat in vec2 pos1;
-flat in vec2 pos2;
-flat in float radius;
-
 uniform ivec2 windowSize;
+
+uniform vec2 pos1;
+uniform vec2 pos2;
+uniform float radius;
 
 void main() {
     vec2 coord = (gl_FragCoord.xy / windowSize * 2) - vec2(1, 1);

@@ -15,13 +15,13 @@ import static org.lwjgl.opengl.GL41C.*;
 public class Renderer {
     private static int particleVertexBuffer;
     private static int particleVertexArray;
-    private static int particleShader;
+    private static Shader particleShader;
 
     private static int lineVertexBuffer;
     private static int lineVertexArray;
-    private static int lineShader;
+    private static Shader lineShader;
 
-    private static int arrowShader;
+    private static Shader arrowShader;
 
     private static List<LineSegment> additionalLineSegments = new ArrayList<>();
     private static List<LineSegment> arrows = new ArrayList<>();
@@ -29,6 +29,15 @@ public class Renderer {
     public static List<GUIElement> guiElements = new ArrayList<>();
 
     private static GLFWWindowManager windowManager;
+
+    public static final float[] quadVertices = {
+            -1, -1,
+            1, -1,
+            -1, 1,
+            1, -1,
+            -1, 1,
+            1, 1
+    };
 
     public static void init(GLFWWindowManager windowManager_){
         windowManager = windowManager_;
@@ -51,34 +60,19 @@ public class Renderer {
         glVertexAttribPointer(2, 1, GL_FLOAT, false, 5 * 4, 4 * 4);
         glEnableVertexAttribArray(2);
 
-        //System.out.println(Path.of("./shaders/particleFSH.glsl").toAbsolutePath());
-        int particleFSH = glCreateShader(GL_FRAGMENT_SHADER);
-        int particleVSH = glCreateShader(GL_VERTEX_SHADER);
+
         try {
-            glShaderSource(particleFSH, Files.readString(Path.of("./shaders/particleFSH.glsl")));
-            glShaderSource(particleVSH, Files.readString(Path.of("./shaders/particleVSH.glsl")));
+            particleShader = new Shader(Files.readString(Path.of("./shaders/particleFSH.glsl")),
+                                        Files.readString(Path.of("./shaders/particleVSH.glsl")));
+
+            lineShader = new Shader(Files.readString(Path.of("./shaders/lineFSH.glsl")),
+                                    Files.readString(Path.of("./shaders/lineVSH.glsl")));
+
+            arrowShader = new Shader(Files.readString(Path.of("./shaders/arrowFSH.glsl")),
+                                     Files.readString(Path.of("./shaders/lineVSH.glsl")));
+
         } catch (IOException e) {
             e.printStackTrace();
-        }
-        glCompileShader(particleFSH);
-        glCompileShader(particleVSH);
-        int[] status = new int[1];
-        glGetShaderiv(particleFSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(particleFSH));
-        glGetShaderiv(particleVSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(particleVSH));
-
-        particleShader = glCreateProgram();
-        glAttachShader(particleShader, particleFSH);
-        glAttachShader(particleShader, particleVSH);
-        glLinkProgram(particleShader);
-        glDeleteShader(particleFSH);
-        glDeleteShader(particleVSH);
-        glGetProgramiv(particleShader, GL_LINK_STATUS, status);
-        if(status[0] == 0){
-            throw new Error(glGetProgramInfoLog(particleShader));
         }
 
 
@@ -87,72 +81,14 @@ public class Renderer {
         glBindVertexArray(lineVertexArray);
         lineVertexBuffer = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
-        //Pos1
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, 5 * 4, 0);
+
+        //Pos
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * 4, 0);
         glEnableVertexAttribArray(0);
-        //Pos2
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * 4, 2 * 4);
-        glEnableVertexAttribArray(1);
-        //Radius
-        glVertexAttribPointer(2, 1, GL_FLOAT, false, 5 * 4, 4 * 4);
-        glEnableVertexAttribArray(2);
 
-        int lineFSH = glCreateShader(GL_FRAGMENT_SHADER);
-        int lineVSH = glCreateShader(GL_VERTEX_SHADER);
-        try {
-            glShaderSource(lineFSH, Files.readString(Path.of("./shaders/lineFSH.glsl")));
-            glShaderSource(lineVSH, Files.readString(Path.of("./shaders/lineVSH.glsl")));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-        glCompileShader(lineFSH);
-        glCompileShader(lineVSH);
-        glGetShaderiv(lineFSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(lineFSH));
-        glGetShaderiv(lineVSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(lineVSH));
-
-        lineShader = glCreateProgram();
-        glAttachShader(lineShader, lineFSH);
-        glAttachShader(lineShader, lineVSH);
-        glLinkProgram(lineShader);
-        glDeleteShader(lineFSH);
-        //glDeleteShader(lineVSH);
-        glGetProgramiv(lineShader, GL_LINK_STATUS, status);
-        if(status[0] == 0){
-            throw new Error(glGetProgramInfoLog(lineShader));
-        }
-
-        int arrowFSH = glCreateShader(GL_FRAGMENT_SHADER);
-        try {
-            glShaderSource(arrowFSH, Files.readString(Path.of("./shaders/arrowFSH.glsl")));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-        glCompileShader(arrowFSH);
-        glGetShaderiv(arrowFSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(arrowFSH));
-
-        arrowShader = glCreateProgram();
-        glAttachShader(arrowShader, arrowFSH);
-        glAttachShader(arrowShader, lineVSH);
-        glLinkProgram(arrowShader);
-        glDeleteShader(arrowFSH);
-        glDeleteShader(lineVSH);
-        glGetProgramiv(arrowShader, GL_LINK_STATUS, status);
-        if(status[0] == 0){
-            throw new Error(glGetProgramInfoLog(arrowShader));
-        }
+        glBufferData(GL_ARRAY_BUFFER, quadVertices, GL_STATIC_DRAW);
 
 
-        /*nkContext = NkContext.create();
-        Nuklear.nk_init(nkContext,
-                NkAllocator.create().alloc((handle, old, size) -> MemoryUtil.nmemAllocChecked(size))
-                        .mfree((handle, ptr) -> MemoryUtil.nmemFree(ptr)),
-                null);*/
 
         windowManager.addMouseCallback((window, button, action, i) -> {
             for (GUIElement guiElement : guiElements) {
@@ -195,52 +131,50 @@ public class Renderer {
         glBindVertexArray(particleVertexArray);
         glBindBuffer(GL_ARRAY_BUFFER, particleVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, particleVertexData, GL_DYNAMIC_DRAW);
-        glUseProgram(particleShader);
-        int windowSizeLocation = glGetUniformLocation(particleShader, "windowSize");
+        particleShader.use();
+        int windowSizeLocation = particleShader.getUniformLocation("windowSize");
         glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
         glDrawArrays(GL_POINTS, 0, particles.size());
 
 
         List<LineSegment> lineSegments = objects.stream().filter(o -> o instanceof LineSegment).map(o -> (LineSegment)o).collect(Collectors.toList());
         lineSegments.addAll(additionalLineSegments);
-        float[] lineSegmentVertexData = new float[lineSegments.size() * 5];
-        for (int i = 0; i < lineSegments.size(); i++) {
-            lineSegmentVertexData[i * 5] = (float)lineSegments.get(i).getP1()[0];
-            lineSegmentVertexData[i * 5 + 1] = (float)lineSegments.get(i).getP1()[1];
-
-            lineSegmentVertexData[i * 5 + 2] = (float)lineSegments.get(i).getP2()[0];
-            lineSegmentVertexData[i * 5 + 3] = (float)lineSegments.get(i).getP2()[1];
-
-            lineSegmentVertexData[i * 5 + 4] = (float)lineSegments.get(i).getRadius();
-        }
 
         glBindVertexArray(lineVertexArray);
         glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, lineSegmentVertexData, GL_DYNAMIC_DRAW);
-        glUseProgram(lineShader);
-        windowSizeLocation = glGetUniformLocation(lineShader, "windowSize");
+        lineShader.use();
+
+        windowSizeLocation = lineShader.getUniformLocation("windowSize");
         glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
-        glDrawArrays(GL_POINTS, 0, lineSegments.size());
 
+        int pos1Location = lineShader.getUniformLocation("pos1");
+        int pos2Location = lineShader.getUniformLocation("pos2");
+        int radiusLocation = lineShader.getUniformLocation("radius");
 
-        float[] arrowVertexData = new float[arrows.size() * 5];
-        for (int i = 0; i < arrows.size(); i++) {
-            arrowVertexData[i * 5] = (float)arrows.get(i).getP1()[0];
-            arrowVertexData[i * 5 + 1] = (float)arrows.get(i).getP1()[1];
-
-            arrowVertexData[i * 5 + 2] = (float)arrows.get(i).getP2()[0];
-            arrowVertexData[i * 5 + 3] = (float)arrows.get(i).getP2()[1];
-
-            arrowVertexData[i * 5 + 4] = (float)arrows.get(i).getRadius();
+        for (LineSegment lineSegment : lineSegments) {
+            glUniform2f(pos1Location, (float) lineSegment.getP1()[0], (float) lineSegment.getP1()[1]);
+            glUniform2f(pos2Location, (float) lineSegment.getP2()[0], (float) lineSegment.getP2()[1]);
+            glUniform1f(radiusLocation, (float) lineSegment.getRadius());
+            glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
-        glBindVertexArray(lineVertexArray);
-        glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, arrowVertexData, GL_DYNAMIC_DRAW);
-        glUseProgram(arrowShader);
-        windowSizeLocation = glGetUniformLocation(arrowShader, "windowSize");
+
+        arrowShader.use();
+
+        windowSizeLocation = arrowShader.getUniformLocation("windowSize");
         glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
-        glDrawArrays(GL_POINTS, 0, arrows.size());
+
+        pos1Location = arrowShader.getUniformLocation("pos1");
+        pos2Location = arrowShader.getUniformLocation("pos2");
+        radiusLocation = arrowShader.getUniformLocation("radius");
+
+        for (LineSegment arrow : arrows) {
+            glUniform2f(pos1Location, (float) arrow.getP1()[0], (float) arrow.getP1()[1]);
+            glUniform2f(pos2Location, (float) arrow.getP2()[0], (float) arrow.getP2()[1]);
+            glUniform1f(radiusLocation, (float) arrow.getRadius());
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
 
 
         for (GUIElement guiElement : guiElements) {

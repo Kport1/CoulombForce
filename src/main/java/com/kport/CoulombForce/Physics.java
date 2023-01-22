@@ -22,8 +22,8 @@ public class Physics {
             applyDragForce(subDt);
             //applyGravity();
 
-            circleCollisionElastic();
-            //circleCollision();
+            //circleCollisionElastic();
+            circleCollision();
 
             circleStaticLineSegmentCollision();
             circleDynamicLineSegmentCollision();

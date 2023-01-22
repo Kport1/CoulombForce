@@ -1,6 +1,8 @@
 package com.kport.CoulombForce.gui;
 
 import com.kport.CoulombForce.GLFWWindowManager;
+import com.kport.CoulombForce.Renderer;
+import com.kport.CoulombForce.Shader;
 import com.kport.CoulombForce.Util;
 import org.lwjgl.glfw.GLFW;
 
@@ -12,7 +14,7 @@ import java.util.Arrays;
 import static org.lwjgl.opengl.GL41C.*;
 
 public class GUISlider implements GUIElement{
-    private static int shader;
+    private static Shader shader;
 
     private double[] pos1;
     private double[] pos2;
@@ -44,7 +46,11 @@ public class GUISlider implements GUIElement{
         vbo = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-        //pos1
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * 4, 0);
+        glEnableVertexAttribArray(0);
+
+        glBufferData(GL_ARRAY_BUFFER, Renderer.quadVertices, GL_STATIC_DRAW);
+        /*//pos1
         glVertexAttribPointer(0, 2, GL_FLOAT, false, 6 * 4, 0);
         glEnableVertexAttribArray(0);
         //pos2
@@ -55,36 +61,14 @@ public class GUISlider implements GUIElement{
         glEnableVertexAttribArray(2);
         //value
         glVertexAttribPointer(3, 1, GL_FLOAT, false, 6 * 4, 5 * 4);
-        glEnableVertexAttribArray(3);
+        glEnableVertexAttribArray(3);*/
 
-        if(shader == 0){
-            int fsh = glCreateShader(GL_FRAGMENT_SHADER);
-            int vsh = glCreateShader(GL_VERTEX_SHADER);
+        if(shader == null) {
             try {
-                glShaderSource(fsh, Files.readString(Path.of("./shaders/GUISliderFSH.glsl")));
-                glShaderSource(vsh, Files.readString(Path.of("./shaders/GUISliderVSH.glsl")));
-            } catch (IOException e) {
+                shader = new Shader(Files.readString(Path.of("./shaders/GUISliderFSH.glsl")),
+                                    Files.readString(Path.of("./shaders/GUISliderVSH.glsl")));
+            } catch (IOException e){
                 e.printStackTrace();
-            }
-            glCompileShader(fsh);
-            glCompileShader(vsh);
-            int[] status = new int[1];
-            glGetShaderiv(fsh, GL_COMPILE_STATUS, status);
-            if(status[0] == 0)
-                throw new Error(glGetShaderInfoLog(fsh));
-            glGetShaderiv(vsh, GL_COMPILE_STATUS, status);
-            if(status[0] == 0)
-                throw new Error(glGetShaderInfoLog(vsh));
-
-            shader = glCreateProgram();
-            glAttachShader(shader, fsh);
-            glAttachShader(shader, vsh);
-            glLinkProgram(shader);
-            glDeleteShader(fsh);
-            glDeleteShader(vsh);
-            glGetProgramiv(shader, GL_LINK_STATUS, status);
-            if(status[0] == 0){
-                throw new Error(glGetProgramInfoLog(shader));
             }
         }
     }
@@ -93,12 +77,23 @@ public class GUISlider implements GUIElement{
     public void render() {
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        float[] data = {(float)pos1[0], (float)pos1[1], (float)pos2[0], (float)pos2[1], radius, (float)value};
-        glBufferData(GL_ARRAY_BUFFER, data, GL_DYNAMIC_DRAW);
-        glUseProgram(shader);
-        int windowSizeLocation = glGetUniformLocation(shader, "windowSize");
+        //float[] data = {(float)pos1[0], (float)pos1[1], (float)pos2[0], (float)pos2[1], radius, (float)value};
+        //glBufferData(GL_ARRAY_BUFFER, data, GL_DYNAMIC_DRAW);
+        shader.use();
+        int windowSizeLocation = shader.getUniformLocation("windowSize");
         glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
-        glDrawArrays(GL_POINTS, 0, 1);
+
+        int pos1Location = shader.getUniformLocation("pos1");
+        int pos2Location = shader.getUniformLocation("pos2");
+        int radiusLocation = shader.getUniformLocation("radius");
+        int valueLocation = shader.getUniformLocation("value");
+
+        glUniform2f(pos1Location, (float)pos1[0], (float)pos1[1]);
+        glUniform2f(pos2Location, (float)pos2[0], (float)pos2[1]);
+        glUniform1f(radiusLocation, radius);
+        glUniform1f(valueLocation, (float)value);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
     @Override

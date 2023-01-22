@@ -12,7 +12,7 @@ import static org.lwjgl.opengl.GL40.*;
 
 public class Main {
     public static GLFWWindowManager windowManager;
-    private static final double FIELD_VIS_DENSITY = 0.08;
+    private static final double FIELD_VIS_DENSITY = 0.1;
     private static final double FIELD_VIS_STRENGTH = 0.0002;
 
     private static final LineSegment mouseVector = new StaticLineSegment(new double[]{0, 0}, new double[]{0, 0}, 0.008);

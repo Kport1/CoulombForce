@@ -34,7 +34,7 @@ public class GLFWWindowManager implements Closeable {
         if(!GLFW.glfwInit()) throw new IllegalStateException("Couldn't initialize GLFW");
         GLFW.glfwDefaultWindowHints();
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_TRUE);
-        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
+        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE);
 
         window = GLFW.glfwCreateWindow(w, h, title, 0, 0);
         if(window == 0) throw new IllegalStateException("Couldn't create window");
