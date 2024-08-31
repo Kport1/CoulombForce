@@ -1,9 +1,8 @@
 package com.kport.CoulombForce;
 
-import org.lwjgl.glfw.GLFW;
+import com.kport.CoulombForce.gui.GUIElement;
 
 import java.io.IOException;
-import java.nio.DoubleBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -11,24 +10,41 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.lwjgl.opengl.GL41.*;
+import static org.lwjgl.opengl.GL41C.*;
 
 public class Renderer {
     private static int particleVertexBuffer;
     private static int particleVertexArray;
-    private static int particleShader;
+    private static Shader particleShader;
 
     private static int lineVertexBuffer;
     private static int lineVertexArray;
-    private static int lineShader;
+    private static Shader lineShader;
 
-    private static List<StaticLineSegment> additionalLineSegments = new ArrayList<>();
-    private static double[] mouseVector = {0, 0};
+    private static Shader arrowShader;
+
+    private static List<LineSegment> additionalLineSegments = new ArrayList<>();
+    private static List<LineSegment> arrows = new ArrayList<>();
+
+    public static List<GUIElement> guiElements = new ArrayList<>();
 
     private static GLFWWindowManager windowManager;
 
+    public static final float[] quadVertices = {
+            -1, -1,
+            1, -1,
+            -1, 1,
+            1, -1,
+            -1, 1,
+            1, 1
+    };
+
     public static void init(GLFWWindowManager windowManager_){
         windowManager = windowManager_;
+
+        glEnable(GL_PROGRAM_POINT_SIZE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
 
         particleVertexArray = glGenVertexArrays();
         glBindVertexArray(particleVertexArray);
@@ -44,38 +60,19 @@ public class Renderer {
         glVertexAttribPointer(2, 1, GL_FLOAT, false, 5 * 4, 4 * 4);
         glEnableVertexAttribArray(2);
 
-        glEnable(GL_PROGRAM_POINT_SIZE);
-        glEnable(GL_POINT_SPRITE);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_BLEND);
 
-        int particleFSH = glCreateShader(GL_FRAGMENT_SHADER);
-        int particleVSH = glCreateShader(GL_VERTEX_SHADER);
         try {
-            glShaderSource(particleFSH, Files.readString(Path.of("./shaders/particleFSH.glsl")));
-            glShaderSource(particleVSH, Files.readString(Path.of("./shaders/particleVSH.glsl")));
+            particleShader = new Shader(Files.readString(Path.of("./shaders/particleFSH.glsl")),
+                                        Files.readString(Path.of("./shaders/particleVSH.glsl")));
+
+            lineShader = new Shader(Files.readString(Path.of("./shaders/lineFSH.glsl")),
+                                    Files.readString(Path.of("./shaders/lineVSH.glsl")));
+
+            arrowShader = new Shader(Files.readString(Path.of("./shaders/arrowFSH.glsl")),
+                                     Files.readString(Path.of("./shaders/lineVSH.glsl")));
+
         } catch (IOException e) {
             e.printStackTrace();
-        }
-        glCompileShader(particleFSH);
-        glCompileShader(particleVSH);
-        int[] status = new int[1];
-        glGetShaderiv(particleFSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(particleFSH));
-        glGetShaderiv(particleVSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(particleVSH));
-
-        particleShader = glCreateProgram();
-        glAttachShader(particleShader, particleFSH);
-        glAttachShader(particleShader, particleVSH);
-        glLinkProgram(particleShader);
-        glDeleteShader(particleFSH);
-        glDeleteShader(particleVSH);
-        glGetProgramiv(particleShader, GL_LINK_STATUS, status);
-        if(status[0] == 0){
-            throw new Error(glGetProgramInfoLog(particleShader));
         }
 
 
@@ -84,43 +81,38 @@ public class Renderer {
         glBindVertexArray(lineVertexArray);
         lineVertexBuffer = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
-        //Pos1
-        glVertexAttribPointer(0, 2, GL_FLOAT, false, 5 * 4, 0);
+
+        //Pos
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * 4, 0);
         glEnableVertexAttribArray(0);
-        //Pos2
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * 4, 2 * 4);
-        glEnableVertexAttribArray(1);
-        //Radius
-        glVertexAttribPointer(2, 1, GL_FLOAT, false, 5 * 4, 4 * 4);
-        glEnableVertexAttribArray(2);
 
-        int lineFSH = glCreateShader(GL_FRAGMENT_SHADER);
-        int lineVSH = glCreateShader(GL_VERTEX_SHADER);
-        try {
-            glShaderSource(lineFSH, Files.readString(Path.of("./shaders/lineFSH.glsl")));
-            glShaderSource(lineVSH, Files.readString(Path.of("./shaders/lineVSH.glsl")));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-        glCompileShader(lineFSH);
-        glCompileShader(lineVSH);
-        glGetShaderiv(lineFSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(lineFSH));
-        glGetShaderiv(lineVSH, GL_COMPILE_STATUS, status);
-        if(status[0] == 0)
-            throw new Error(glGetShaderInfoLog(lineVSH));
+        glBufferData(GL_ARRAY_BUFFER, quadVertices, GL_STATIC_DRAW);
 
-        lineShader = glCreateProgram();
-        glAttachShader(lineShader, lineFSH);
-        glAttachShader(lineShader, lineVSH);
-        glLinkProgram(lineShader);
-        glDeleteShader(lineFSH);
-        glDeleteShader(lineVSH);
-        glGetProgramiv(lineShader, GL_LINK_STATUS, status);
-        if(status[0] == 0){
-            throw new Error(glGetProgramInfoLog(lineShader));
-        }
+
+
+        windowManager.addMouseCallback((window, button, action, i) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleMouseButtonEvent(window, button, action, i);
+            }
+        });
+
+        windowManager.addKeyCallback((window, key, scancode, action, mods) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleKeyEvent(window, key, scancode, action, mods);
+            }
+        });
+
+        windowManager.addCursorPosCallback((window, x, y) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleCursorPosEvent(window, x, y);
+            }
+        });
+
+        windowManager.addScrollCallback((window, d, dir) -> {
+            for (GUIElement guiElement : guiElements) {
+                guiElement.handleScrollEvent(window, d, dir);
+            }
+        });
     }
 
     public static void renderObjects(){
@@ -139,41 +131,79 @@ public class Renderer {
         glBindVertexArray(particleVertexArray);
         glBindBuffer(GL_ARRAY_BUFFER, particleVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, particleVertexData, GL_DYNAMIC_DRAW);
-        glUseProgram(particleShader);
+        particleShader.use();
+        int windowSizeLocation = particleShader.getUniformLocation("windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
         glDrawArrays(GL_POINTS, 0, particles.size());
 
 
-        List<StaticLineSegment> lineSegments = objects.stream().filter(o -> o instanceof StaticLineSegment).map(o -> (StaticLineSegment)o).collect(Collectors.toList());
+        List<LineSegment> lineSegments = objects.stream().filter(o -> o instanceof LineSegment).map(o -> (LineSegment)o).collect(Collectors.toList());
         lineSegments.addAll(additionalLineSegments);
-        if(Util.len(mouseVector) > Double.MIN_VALUE * 128)
-        lineSegments.add(new StaticLineSegment(windowManager.getNormalizedCursorPos(), Util.add(windowManager.getNormalizedCursorPos(), mouseVector), 0.005));
-        float[] lineSegmentVertexData = new float[lineSegments.size() * 5];
-        for (int i = 0; i < lineSegments.size(); i++) {
-            lineSegmentVertexData[i * 5] = (float)lineSegments.get(i).getP1()[0];
-            lineSegmentVertexData[i * 5 + 1] = (float)lineSegments.get(i).getP1()[1];
-
-            lineSegmentVertexData[i * 5 + 2] = (float)lineSegments.get(i).getP2()[0];
-            lineSegmentVertexData[i * 5 + 3] = (float)lineSegments.get(i).getP2()[1];
-
-            lineSegmentVertexData[i * 5 + 4] = (float)lineSegments.get(i).getRadius();
-        }
 
         glBindVertexArray(lineVertexArray);
         glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, lineSegmentVertexData, GL_DYNAMIC_DRAW);
-        glUseProgram(lineShader);
-        glDrawArrays(GL_POINTS, 0, lineSegments.size());
+        lineShader.use();
+
+        windowSizeLocation = lineShader.getUniformLocation("windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
+
+        int pos1Location = lineShader.getUniformLocation("pos1");
+        int pos2Location = lineShader.getUniformLocation("pos2");
+        int radiusLocation = lineShader.getUniformLocation("radius");
+
+        for (LineSegment lineSegment : lineSegments) {
+            glUniform2f(pos1Location, (float) lineSegment.getP1()[0], (float) lineSegment.getP1()[1]);
+            glUniform2f(pos2Location, (float) lineSegment.getP2()[0], (float) lineSegment.getP2()[1]);
+            glUniform1f(radiusLocation, (float) lineSegment.getRadius());
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+
+        arrowShader.use();
+
+        windowSizeLocation = arrowShader.getUniformLocation("windowSize");
+        glUniform2iv(windowSizeLocation, windowManager.getWindowSize());
+
+        pos1Location = arrowShader.getUniformLocation("pos1");
+        pos2Location = arrowShader.getUniformLocation("pos2");
+        radiusLocation = arrowShader.getUniformLocation("radius");
+
+        for (LineSegment arrow : arrows) {
+            glUniform2f(pos1Location, (float) arrow.getP1()[0], (float) arrow.getP1()[1]);
+            glUniform2f(pos2Location, (float) arrow.getP2()[0], (float) arrow.getP2()[1]);
+            glUniform1f(radiusLocation, (float) arrow.getRadius());
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+
+
+        for (GUIElement guiElement : guiElements) {
+            guiElement.render();
+        }
     }
 
-    public static void addLineSegment(StaticLineSegment lineSegment){
+    public static void addLineSegment(LineSegment lineSegment){
         additionalLineSegments.add(lineSegment);
     }
 
-    public static void removeLineSegment(StaticLineSegment lineSegment){
+    public static void removeLineSegment(LineSegment lineSegment){
         additionalLineSegments.remove(lineSegment);
     }
 
-    public static void setMouseVector(double[] vec){
-        mouseVector = vec;
+    public static void addArrow(LineSegment lineSegment){
+        arrows.add(lineSegment);
+    }
+
+    public static void removeArrow(LineSegment lineSegment){
+        arrows.remove(lineSegment);
+    }
+
+    public static void addGUIElement(GUIElement element){
+        guiElements.add(element);
+        element.init(windowManager);
+    }
+
+    public static void removeGUIElement(GUIElement element){
+        guiElements.remove(element);
     }
 }

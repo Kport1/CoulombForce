@@ -1,14 +1,10 @@
 package com.kport.CoulombForce;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Consumer;
-
 public class Particle implements PhysicsObject{
     private final double[] pos;
-    private final double[] prev_pos;
-    //private double[] vel = new double[]{0, 0};
-    private final double[] acc = new double[]{0, 0};
+    private final double[] prevPos;
+    private final double[] acc = {0, 0};
+    private final double invmass;
     private final double mass;
 
     private final double charge;
@@ -16,19 +12,20 @@ public class Particle implements PhysicsObject{
 
     public Particle(double[] pos_, double mass_, double charge_, double radius_){
         pos = pos_;
-        prev_pos = pos_.clone();
+        prevPos = pos_.clone();
         mass = mass_;
+        invmass = 1 / mass_;
         charge = charge_;
         radius = radius_;
     }
 
     @Override
     public void update(double dt){
-        double vx = pos[0] - prev_pos[0];
-        double vy = pos[1] - prev_pos[1];
+        double vx = pos[0] - prevPos[0];
+        double vy = pos[1] - prevPos[1];
 
-        prev_pos[0] = pos[0];
-        prev_pos[1] = pos[1];
+        prevPos[0] = pos[0];
+        prevPos[1] = pos[1];
 
         pos[0] += vx + acc[0] * dt * dt;
         pos[1] += vy + acc[1] * dt * dt;
@@ -41,8 +38,8 @@ public class Particle implements PhysicsObject{
     }
 
     public void applyForce(double[] force){
-        acc[0] += force[0] / mass;
-        acc[1] += force[1] / mass;
+        acc[0] += force[0] * invmass;
+        acc[1] += force[1] * invmass;
     }
 
     public double[] getPos(){
@@ -67,32 +64,32 @@ public class Particle implements PhysicsObject{
     }
 
     public double[] getVel(){
-        double vx = pos[0] - prev_pos[0];
-        double vy = pos[1] - prev_pos[1];
+        double vx = pos[0] - prevPos[0];
+        double vy = pos[1] - prevPos[1];
         return new double[]{vx, vy};
     }
 
     public void setVel(double[] vel){
-        prev_pos[0] = pos[0] - vel[0];
-        prev_pos[1] = pos[1] - vel[1];
+        prevPos[0] = pos[0] - vel[0];
+        prevPos[1] = pos[1] - vel[1];
     }
 
     public void addVel(double[] vel){
-        prev_pos[0] -= vel[0];
-        prev_pos[1] -= vel[1];
+        prevPos[0] -= vel[0];
+        prevPos[1] -= vel[1];
     }
 
     public double[] getImpulse(){
-        double vx = pos[0] - prev_pos[0];
-        double vy = pos[1] - prev_pos[1];
+        double vx = pos[0] - prevPos[0];
+        double vy = pos[1] - prevPos[1];
         return new double[]{vx * mass, vy * mass};
     }
 
     public void setImpulse(double[] impulse){
-        setVel(new double[]{impulse[0] / mass, impulse[1] / mass});
+        setVel(new double[]{impulse[0] * invmass, impulse[1] * invmass});
     }
 
     public void addImpulse(double[] impulse){
-        addVel(new double[]{impulse[0] / mass, impulse[1] / mass});
+        addVel(new double[]{impulse[0] * invmass, impulse[1] * invmass});
     }
 }

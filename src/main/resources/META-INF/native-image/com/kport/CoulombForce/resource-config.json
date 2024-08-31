@@ -1,0 +1,15 @@
+{
+  "resources":{
+  "includes":[
+    {
+      "pattern":"\\Qwindows/x64/org/lwjgl/glfw/glfw.dll\\E"
+    }, 
+    {
+      "pattern":"\\Qwindows/x64/org/lwjgl/lwjgl.dll\\E"
+    }, 
+    {
+      "pattern":"\\Qwindows/x64/org/lwjgl/opengl/lwjgl_opengl.dll\\E"
+    }
+  ]},
+  "bundles":[]
+}
